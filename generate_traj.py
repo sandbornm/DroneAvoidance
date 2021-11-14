@@ -101,21 +101,25 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
     solution = sol.value(pos)
     return solution
 
-
+# goal = [5, 5, 5]
+# x_start = [0, 0, 0]
+# N = 20
+# dt = 0.5
+#
 # # Bottom
-# sol_bot = generate_traj([0, 0, 0], [3, 3, 3], 50, 0.5, 0, 3, -3)
+# sol_bot = generate_traj(x_start, goal, N, dt, 0, 3, -3)
 #
 # # Top
-# sol_top = generate_traj([0, 0, 0], [3, 3, 3], 50, 0.5, 0, -3, 3)
+# sol_top = generate_traj(x_start, goal, N, dt, 0, -3, 3)
 #
 # # Left
-# sol_lef = generate_traj([0, 0, 0], [3, 3, 3], 50, 0.5, -3, 3, 0)
+# sol_lef = generate_traj(x_start, goal, N, dt, -3, 3, 0)
 #
 # # Right
-# sol_rig = generate_traj([0, 0, 0], [3, 3, 3], 50, 0.5, 3, -3, 0)
+# sol_rig = generate_traj(x_start, goal, N, dt, 3, -3, 0)
 #
 # # Middle
-# sol_mid = generate_traj([0, 0, 0], [3, 3, 3], 50, 0.5, 0, 0, 0)
+# sol_mid = generate_traj(x_start, goal, N, dt, 0, 0, 0)
 #
 # fig = plt.figure()
 # ax = plt.axes(projection='3d')
