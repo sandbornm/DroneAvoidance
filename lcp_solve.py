@@ -5,28 +5,30 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
 
+from generate_traj import generate_traj
+
+from HW2 import LCP_lemke_howson
+
 
 """ hyperparams """
-T = 30 # number of timesteps
+T = 3 # game length
 L = 3 # turn length
 H = 20 # predictive horizon
 nT = int(T/L) # number of turns in game
 N = 5 # number of candidate trajectories
-goalA = np.zeros((N, 3)) # goal position [x, y] for each trajectory, to do change to 3
-goalB = np.ones((N, 3))
-dof = 12
+dof = 8
 dt = .5
 
 """ dummy trajectories """
 # assume dof contains (x,y,z) spatial information in the first 3 elements
-trajA = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
-trajB = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
+# trajA = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
+# trajB = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
 
 
 """ check if a single pair of trajectories a and b intersect at any point 
     to be used to weight against collision """
 def intersect(a, b, tol=.3): # TODO adjust tol as needed
-    assert a.shape == (dof, H) and b.shape == (dof, H)
+    assert a.shape == (dof, H+1) and b.shape == (dof, H+1)
     dists = []
     for h in range(H):
         axyz = a[:3, h]
@@ -40,52 +42,50 @@ def intersect(a, b, tol=.3): # TODO adjust tol as needed
 
 """ get the minimum distance to goal (L2 norm in 3-space) over the next H trajectories """
 def distToGoal(traj, player="a"):
+    #traj = traj.T # will be (8, 21)
+    #print(f"traj shape {traj.shape}")
     goal = goalA if player == "a" else goalB
     dist = np.inf
-    dist = min(dist, np.linalg.norm(traj[:3, H-1] - goal))
+    dist = min(dist, np.linalg.norm(traj[:3, H] - goal))
     return dist
 
 
 """ get cost functions to be solved for each"""
 def getCostMats(Za, Zb):
     mats = []
-    for turn in range(nT):
-        A = np.zeros((N, N))
-        B = np.zeros((N, N))
-        for i in range(N):
-            for j in range(N): # TODO are these costs symmetric?
-                A[i, j] = distToGoal(Za[turn, i, :, :]) + (10e6 * intersect(Za[turn, i, :, :], Zb[turn, j, :, :]))
-                B[i, j] = distToGoal(Zb[turn, i, :, :], player="b") + (10e6 * intersect(Za[turn, j, :, :], Zb[turn, i, :, :]))
-        mats.append([A, B])
-    return mats
+    # for turn in range(nT):
+    A = np.zeros((N, N))
+    B = np.zeros((N, N))
+    for i in range(N):
+        for j in range(N): # TODO are these costs symmetric?
+            #print(f"Za shape {Za[i, :, :].shape}")
+            A[i, j] = distToGoal(Za[i, :, :]) + (1e6 * intersect(Za[i, :, :], Zb[j, :, :]))
+            B[i, j] = distToGoal(Zb[i, :, :], player="b") + (1e6 * intersect(Za[j, :, :], Zb[i, :, :]))
+    mats.append([A, B])
+    return np.array(mats)
 
 
 """" solve the LCPs given by A and B at each turn in the game using nashpy """
 def solveLCPs(mats):
     sols = []
-    for [A,B] in mats[:1]:
-        gme = nash.Game(A, B)
+    for [A,B] in list(mats):
+        gme = nash.Game(A, B) # todo how to deal with this
         sols.append(gme.lemke_howson(initial_dropped_label=0))
-    return sols
+        #sols.append(LCP_lemke_howson(A, B))
+    return np.array(sols)
 
-
-
-""" dummy function for generate trajectory """
-def gT(xcur, goal):
-    print(xcur, goal)
-    return 1
 
 """ 
-xcur: current state vector 12 dof
-goal: goal for player in 3-space
+xcur:
+goal: x,y,z goal for player
 """
-def GenerateTrajectories(xcur, goal):
+def generateTrajectories(start, goal, cx, cy, cz):
     traj = []
     for _ in range(nT):
-        for _ in range(N):
-            t = gT(xcur, goal, H, dt)
+        for i in range(N):
+            t = generate_traj(start, goal, H, dt, cx[i], cy[i], cz[i])
             traj.append(t)
-    return traj
+    return np.array(traj)
 
 
 """ visualize the results of the simulation """
@@ -108,9 +108,50 @@ def sim():
 
 
 """ Driver code """
+startA = [1, 1, 1]
+goalA = [0, 0, 0]
+startB = [0, 0, 0]
+goalB = [1, 1, 1]
+cx = [0, 0, -3, 3, 0]
+cy = [3, -3, 3, -3, 0]
+cz = [-3, 3, 0, 0, 0]
 
-mats = getCostMats(trajA, trajB)
-sols = solveLCPs(mats)
+# generate trajectories
+trajA = generateTrajectories(startA, goalA, cx, cy, cz)
+trajB = generateTrajectories(startB, goalB, cx, cy, cz)
+print(trajA.shape)
+print(trajB.shape)
+
+# get costs
+costs = getCostMats(trajA, trajB)
+print(costs)
+
+# solve the LCPs
+sols = solveLCPs(costs)
+print(f"solution shape {sols.shape}")
+print(sols)
+
+asol = np.argmax(sols[0,0])
+bsol = np.argmax(sols[0,1])
+print(asol, bsol)
+
+print("done")
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z')
+ax.plot(trajA[asol,0, :], trajA[asol,1,:], trajA[asol,2,:], label="A")
+ax.plot(trajB[bsol,0, :], trajB[bsol,1,:], trajB[bsol,2,:], label="B")
+ax.legend(loc="upper left")
+plt.show()
+
+
+
+
+# mats = getCostMats(trajA, trajB)
+# sols = solveLCPs(mats)
 
 # Test RPS bimatrix example
 # A = np.array([[2, 3, 1], [1, 2, 3], [3, 1, 2]])
