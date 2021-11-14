@@ -14,7 +14,7 @@ cy: ... in the y direction
 cz: ... in the z direction
 
 Outputs:
-(N, 8) dimensional array
+(N+1, 8) dimensional array
 In this order from index 0 - 7
 x
 y
@@ -99,7 +99,7 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 
     # ---- post-processing        ------
     solution = sol.value(X)
-    return solution.T
+    return solution
 
 # goal = [5, 5, 5]
 # x_start = [0, 0, 0]
@@ -108,6 +108,7 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 #
 # # Bottom
 # sol_bot = generate_traj(x_start, goal, N, dt, 0, 3, -3)
+#
 #
 # # Top
 # sol_top = generate_traj(x_start, goal, N, dt, 0, -3, 3)
