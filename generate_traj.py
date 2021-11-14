@@ -98,8 +98,8 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
     sol = opti.solve()  # actual solve
 
     # ---- post-processing        ------
-    solution = sol.value(pos)
-    return solution
+    solution = sol.value(X)
+    return solution.T
 
 # goal = [5, 5, 5]
 # x_start = [0, 0, 0]
@@ -126,10 +126,10 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 # ax.set_xlabel('x')
 # ax.set_ylabel('y')
 # ax.set_zlabel('z')
-# ax.plot(sol_bot[0, :], sol_bot[1, :], sol_bot[2, :], label="bottom")
-# ax.plot(sol_top[0, :], sol_top[1, :], sol_top[2, :], label="top")
-# ax.plot(sol_lef[0, :], sol_lef[1, :], sol_lef[2, :], label="left")
-# ax.plot(sol_rig[0, :], sol_rig[1, :], sol_rig[2, :], label="right")
-# ax.plot(sol_mid[0, :], sol_mid[1, :], sol_mid[2, :], label="bottom")
+# ax.plot(sol_bot[:, 0], sol_bot[:, 1], sol_bot[:, 2], label="bottom")
+# ax.plot(sol_top[:, 0], sol_top[:, 1], sol_top[:, 2], label="top")
+# ax.plot(sol_lef[:, 0], sol_lef[:, 1], sol_lef[:, 2], label="left")
+# ax.plot(sol_rig[:, 0], sol_rig[:, 1], sol_rig[:, 2], label="right")
+# ax.plot(sol_mid[:, 0], sol_mid[:, 1], sol_mid[:, 2], label="bottom")
 # ax.legend(loc="upper left")
 # plt.show()
