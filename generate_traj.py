@@ -14,7 +14,7 @@ cy: ... in the y direction
 cz: ... in the z direction
 
 Outputs:
-(N+1, 8) dimensional array
+(8, N + 1) dimensional array
 In this order from index 0 - 7
 x
 y
@@ -25,9 +25,16 @@ vy
 vz
 vphi - yaw-rate
 
+(4, N) dimensional array
+In this order from index 0-3
+ux
+uy
+uz
+uphi
+
 Examples of use cases are shown below
 '''
-def generate_traj(x_start, goal, N, dt, cx, cy, cz):
+def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
     k_x = 1
     k_y = 1
     k_z = 1
@@ -87,7 +94,7 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 
     # ---- boundary conditions --------
     opti.subject_to(pos[:, 0] == x_start)  # start at position 0 ...
-    opti.subject_to(speed[:, 0] == [0, 0, 0])  # ... from stand-still
+    opti.subject_to(speed[:, 0] == v_start)  # ... from stand-still
 
     # ---- misc. constraints  ----------
     opti.subject_to(T >= 0)  # distance must be positive
@@ -104,23 +111,24 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 
 # goal = [5, 5, 5]
 # x_start = [0, 0, 0]
+# v_start = [0, 0, 0]
 # N = 20
 # dt = 0.5
 #
 # # Bottom
-# sol_bot, _ = generate_traj(x_start, goal, N, dt, 0, 3, -3)
+# sol_bot, _ = generate_traj(x_start, v_start, goal, N, dt, 0, 3, -3)
 #
 # # Top
-# sol_top, _ = generate_traj(x_start, goal, N, dt, 0, -3, 3)
+# sol_top, _ = generate_traj(x_start, v_start, goal, N, dt, 0, -3, 3)
 #
 # # Left
-# sol_lef, _ = generate_traj(x_start, goal, N, dt, -3, 3, 0)
+# sol_lef, _ = generate_traj(x_start, v_start, goal, N, dt, -3, 3, 0)
 #
 # # Right
-# sol_rig, _ = generate_traj(x_start, goal, N, dt, 3, -3, 0)
+# sol_rig, _ = generate_traj(x_start, v_start goal, N, dt, 3, -3, 0)
 #
 # # Middle
-# sol_mid ,_ = generate_traj(x_start, goal, N, dt, 0, 0, 0)
+# sol_mid ,_ = generate_traj(x_start, v_start, goal, N, dt, 0, 0, 0)
 #
 # fig = plt.figure()
 # ax = plt.axes(projection='3d')
