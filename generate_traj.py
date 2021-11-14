@@ -86,7 +86,7 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
     opti.subject_to(opti.bounded(-1, U, 1))  # control is limited
 
     # ---- boundary conditions --------
-    opti.subject_to(pos[:, 0] == [0, 0, 0])  # start at position 0 ...
+    opti.subject_to(pos[:, 0] == x_start)  # start at position 0 ...
     opti.subject_to(speed[:, 0] == [0, 0, 0])  # ... from stand-still
 
     # ---- misc. constraints  ----------
@@ -109,7 +109,6 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 # # Bottom
 # sol_bot = generate_traj(x_start, goal, N, dt, 0, 3, -3)
 #
-#
 # # Top
 # sol_top = generate_traj(x_start, goal, N, dt, 0, -3, 3)
 #
@@ -127,10 +126,10 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 # ax.set_xlabel('x')
 # ax.set_ylabel('y')
 # ax.set_zlabel('z')
-# ax.plot(sol_bot[:, 0], sol_bot[:, 1], sol_bot[:, 2], label="bottom")
-# ax.plot(sol_top[:, 0], sol_top[:, 1], sol_top[:, 2], label="top")
-# ax.plot(sol_lef[:, 0], sol_lef[:, 1], sol_lef[:, 2], label="left")
-# ax.plot(sol_rig[:, 0], sol_rig[:, 1], sol_rig[:, 2], label="right")
-# ax.plot(sol_mid[:, 0], sol_mid[:, 1], sol_mid[:, 2], label="bottom")
+# ax.plot(sol_bot[0, :], sol_bot[1, :], sol_bot[2, :], label="bottom")
+# ax.plot(sol_top[0, :], sol_top[1, :], sol_top[2, :], label="top")
+# ax.plot(sol_lef[0, :], sol_lef[1, :], sol_lef[2, :], label="left")
+# ax.plot(sol_rig[0, :], sol_rig[1, :], sol_rig[2, :], label="right")
+# ax.plot(sol_mid[0, :], sol_mid[1, :], sol_mid[2, :], label="bottom")
 # ax.legend(loc="upper left")
 # plt.show()
