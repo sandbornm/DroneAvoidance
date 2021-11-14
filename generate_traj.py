@@ -98,8 +98,9 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
     sol = opti.solve()  # actual solve
 
     # ---- post-processing        ------
-    solution = sol.value(X)
-    return solution
+    sol_x = sol.value(X)
+    sol_u = sol.value(U)
+    return sol_x, sol_u
 
 # goal = [5, 5, 5]
 # x_start = [0, 0, 0]
@@ -107,19 +108,19 @@ def generate_traj(x_start, goal, N, dt, cx, cy, cz):
 # dt = 0.5
 #
 # # Bottom
-# sol_bot = generate_traj(x_start, goal, N, dt, 0, 3, -3)
+# sol_bot, _ = generate_traj(x_start, goal, N, dt, 0, 3, -3)
 #
 # # Top
-# sol_top = generate_traj(x_start, goal, N, dt, 0, -3, 3)
+# sol_top, _ = generate_traj(x_start, goal, N, dt, 0, -3, 3)
 #
 # # Left
-# sol_lef = generate_traj(x_start, goal, N, dt, -3, 3, 0)
+# sol_lef, _ = generate_traj(x_start, goal, N, dt, -3, 3, 0)
 #
 # # Right
-# sol_rig = generate_traj(x_start, goal, N, dt, 3, -3, 0)
+# sol_rig, _ = generate_traj(x_start, goal, N, dt, 3, -3, 0)
 #
 # # Middle
-# sol_mid = generate_traj(x_start, goal, N, dt, 0, 0, 0)
+# sol_mid ,_ = generate_traj(x_start, goal, N, dt, 0, 0, 0)
 #
 # fig = plt.figure()
 # ax = plt.axes(projection='3d')
