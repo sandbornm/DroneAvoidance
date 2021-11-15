@@ -51,12 +51,12 @@ def distToGoal(traj, player="a"):
 takes the vector of 4D control inputs over the H steps of the computed trajectory
 """
 def accPenalty(accs):
-    print("in accpenalty")
-    print("accs.shape")
-    print(accs.shape)
+    # print("in accpenalty")
+    # print("accs.shape")
+    # print(accs.shape)
     avAcc = np.average(accs, axis=1)
-    print(avAcc.shape)
-    print(avAcc.T.dot(avAcc))
+    # print(avAcc.shape)
+    # print(avAcc.T.dot(avAcc))
     return avAcc.T.dot(avAcc)
 
 
@@ -84,9 +84,9 @@ def getCostMats(Za, Ua, Zb, Ub):
 
 """" solve the LCPs given by A and B at each turn in the game using nashpy """
 def solveLCPs(mats):
-    print("in solve LCPS")
-    print(type(mats))
-    print(type(mats[0]))
+    # print("in solve LCPS")
+    # print(type(mats))
+    # print(type(mats[0]))
     sols = []
     for x in list(mats):
         #print(x[0], x[1])
@@ -117,10 +117,10 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
     
     # initial start
 
-    print("startA")
-    print(startA)
-    print("startB")
-    print(startB)
+    # print("startA")
+    # print(startA)
+    # print("startB")
+    # print(startB)
     nextStartA = startA
     nextStartB = startB
     vStartA = [0,0,0]
@@ -144,9 +144,7 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         costs = getCostMats(trajA, accA, trajB, accB)
 
         sols = solveLCPs(costs)
-
-        #print(f"sols shape {sols.shape}")
-
+        
         # choose action
         asol = np.argmax(sols[0,0])
         bsol = np.argmax(sols[0,1])
@@ -164,55 +162,81 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         vStartA = trajA[asol, 4:7, L] # assign next velocity to xyz
         vStartB = trajB[bsol, 4:7, L]
 
-        print("actual traj") # TODO add error in each direction
-        print(f"A {trajAactual[:3, -1]}")
-        print(f"B {trajBactual[:3, -1]}")
+        print("actual traj")
+        print(f"A {trajAactual[:3, turn]}")
+        print(f"B {trajBactual[:3, turn]}")
 
-        fig = plt.figure()
-        ax = plt.axes(projection='3d')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        #ax.plot(trajA[asol, 0, :], trajA[asol, 1, :], trajA[asol, 2, :], label="A")
-        #ax.plot(trajB[bsol, 0, :], trajB[bsol, 1, :], trajB[bsol, 2, :], label="B")
+        ax, ay, az = nextStartA
+        bx, by, bz = nextStartB
+        xga, yga, zga = goalA
+        xgb, ygb, zgb = goalB
 
-        ax.plot(trajAactual[0, :], trajAactual[1, :], trajAactual[2, :], label="A")
-        ax.plot(trajBactual[0, :], trajBactual[1, :], trajBactual[2, :], label="B")
-        ax.legend(loc="upper left")
-        plt.show()
+        # TODO plot error curves
+        print(f"turn number {turn}/{nT}")
+        print("Percent error from goal A")
+        print(f"x: {round((abs(ax-xga)/xga)*100, 2)}%")
+        print(f"y: {round((abs(ay-yga)/yga)*100, 2)}%")
+        print(f"z: {round((abs(az-zga)/zga)*100, 2)}%")
+
+        print("Percent error from goal B")
+        print(f"x: {round((abs(bx-xgb)/xgb)*100, 2)}%")
+        print(f"y: {round((abs(by-ygb)/ygb)*100, 2)}%")
+        print(f"z: {round((abs(bz-zgb)/zgb)*100, 2)}%")
+
+        print("--------------------")
 
 
+        # fig = plt.figure()
+        # ax = plt.axes(projection='3d')
+        # ax.set_xlabel('x')
+        # ax.set_ylabel('y')
+        # ax.set_zlabel('z')
+        # #ax.plot(trajA[asol, 0, :], trajA[asol, 1, :], trajA[asol, 2, :], label="A")
+        # #ax.plot(trajB[bsol, 0, :], trajB[bsol, 1, :], trajB[bsol, 2, :], label="B")
+
+        # ax.plot(trajAactual[0, :], trajAactual[1, :], trajAactual[2, :], label="A")
+        # ax.plot(trajBactual[0, :], trajBactual[1, :], trajBactual[2, :], label="B")
+        # ax.legend(loc="upper left")
+        # plt.show()
 
 
+    # animation
+    fig = plt.figure() 
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    # arms to show yaw in animation - not showing up
+    armA, = ax.plot([],[],[],color='blue',linewidth=5,antialiased=False)
+    armB, = ax.plot([],[],[],color='red',linewidth=5,antialiased=False)
+    pos_a = ax.scatter(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")
+    pos_b = ax.scatter(trajBactual[0, 0], trajBactual[1, 0 ], trajBactual[2, 0], label="B")
+
+    def animate(t):
+        pos_a.set_offsets([trajAactual[0, t], trajAactual[1, t], trajAactual[2, t]])
+        pos_b.set_offsets([trajBactual[0, t], trajBactual[1, t], trajBactual[2, t]])
+        
+        # update arm positions - TODO this doesnt work
+        armA.set_data(trajAactual[0, t], trajAactual[1, t])
+        armA.set_3d_properties(trajAactual[2, t])
+        armB.set_data(trajBactual[0, t], trajBactual[1, t])
+        armB.set_3d_properties(trajBactual[2, t])
 
 
-    # TODO animation
-    # TODO % error in each direction
-    # TODO other metrics for evaluation?
-
-    # fig, ax = plt.subplots()
-    # # pos_a = ax.scatter(Zactual_a[0, 0], Zactual_a[1, 0], 10, 'b')
-    # # pos_b = ax.scatter(Zactual_b[0,0], Zactual_b[1, 0], 10, 'r')
-
-    # def animate(t):
-    #     pass
-    #     # pos_a.set_offsets([Zactual_a[0, t], Zactual_a[1, t]])
-    #     # pos_b.set_offsets([Zactual_b[0, t], Zactual_b[1, t]])
-
-    # ani = animation.FuncAnimation(fig,
-    #                                 animate,
-    #                                 save_count=T,  # total number of calls to animate
-    #                                 interval=dt * 1000)  # interval = miliseconds between frames
-    # ani.save("tag.mp4")
+    ani = animation.FuncAnimation(fig,
+                                animate,
+                                save_count=T,  # total number of calls to animate
+                                interval=dt * 1000)  # interval = miliseconds between frames
+    ani.save("avoid.mp4")
 
 
 
 
 """ Driver code """
-startA = [5, 5, 5] # blue
-goalA = [0, 0, 0]
-startB = [0, 0, 0] # orange
-goalB = [5, 5, 5]
+startA = [6, 6, 6] # blue
+goalA = [1, 1, 1]
+startB = [1, 1, 1] # orange
+goalB = [6, 6, 6]
 cx = [0, 0, -3, 3, 0] # TODO change these?
 cy = [3, -3, 3, -3, 0]
 cz = [-3, 3, 0, 0, 0]
