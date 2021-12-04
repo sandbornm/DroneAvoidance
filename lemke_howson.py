@@ -122,5 +122,3 @@ def LCP_lemke_howson(A, B, max_iters=50):
         x = np.zeros((n, 1))
         y = np.zeros((m, 1))
         return (x, y) 
-
-

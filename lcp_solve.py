@@ -8,26 +8,33 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from generate_traj import generate_traj
 from lemke_howson import LCP_lemke_howson
+import os
+from tqdm import tqdm
+import time
 
 
-""" hyperparams """
-T = 30 # game length
+""" hyperparams - can be adjusted for a parameter study"""
+T = 100 # game length (25, 50, 100, 200)
 L = 5 # turn length
 H = 10 # predictive horizon
-nT = int(T/L) # number of turns in game
+nT = int(T/L) # number of turns in game (5, 10, 20, 40)
 N = 5 # number of candidate trajectories
-dof = 8
-dt = .5
+dof = 8 # dof in dynamics model
+dt = .1 # timestep size
+tol = 1 # tolerance for checking if trajectories intersect
 
-""" dummy trajectories """
-# assume dof contains (x,y,z) spatial information in the first 3 elements
-# trajA = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
-# trajB = np.random.randint(low=10, high=20, size=(nT, N, dof, H))
+
 
 
 """ check if a single pair of trajectories a and b intersect at any point 
-    to be used to weight against collision """
-def intersect(a, b, tol=1): # TODO adjust tol as needed
+    to be used to weight against collision 
+    
+    a, b: np.array representing a trajectory of shape (dof, H+1) for a single turn A and B 
+
+    returns: a single integer indicating whether the passed trajectories intersect within
+            tolerance at any point in the trajectory
+"""
+def intersect(a, b):
     assert a.shape == (dof, H+1) and b.shape == (dof, H+1)
     dists = []
     for h in range(H):
@@ -36,13 +43,16 @@ def intersect(a, b, tol=1): # TODO adjust tol as needed
         dists.append(np.linalg.norm(axyz - bxyz))
     dists = np.array(dists)
     # print(np.array([int(d < tol) for d in dists]))
-    # print(int(np.any(dists < tol)))
+    #print(f"intersect return {int(np.any(dists < tol))}")
     return int(np.any(dists < tol))
 
 
-""" get the minimum distance to goal (L2 norm in 3-space) over the next H trajectories """
+""" get the minimum distance to goal (L2 norm in 3-space) over the next H trajectories 
+
+    traj: np.array representing the trajectory of shape (dof, H+1) for the indicated player
+    player: a string representing the player of interest
+"""
 def distToGoal(traj, player="a"):
-    #traj = traj.T # will be (8, 21)
     #print(f"traj shape {traj.shape}")
     goal = goalA if player == "a" else goalB
     dist = np.inf
@@ -111,14 +121,42 @@ def generateTrajectories(start, vstart, goal, cx, cy, cz):
     return np.array(traj), np.array(acc)
 
 
+"""
+Compute the error at a single turn for the start position and goal for a single player
 
+    start: the start position for the player
+    goal: the goal position for the player
 
+    returns: a list of percent error in the x, y, z directions
 
-""" visualize the results of the simulation """
+"""
+def getErrorAtTurn(nextStart, goal):
+    
+    x, y, z = nextStart
+    xg, yg, zg = goal
+
+    xerr = round((abs(x-xg)/xg)*100, 2)
+    yerr = round((abs(y-yg)/yg)*100, 2)
+    zerr = round((abs(z-zg)/zg)*100, 2)
+
+    err = [xerr, yerr, zerr]
+
+    return err
+
+"""
+Run the simulation 
+
+startA, B: the point in 3-space (x, y, z) where A/B starts from 
+goalA, B: the point in 3-space (x, y, z) where A/B wants to go to
+
+cx, cy, cz: scalar distance in each direction from the midpoint of the start to goal from
+            the current trajectory
+
+returns: a tuple of (tA, eA) - the actual trajectories for A and B and the percent error at each turn
+         in each direction for A and B's distance to their respective goals
+"""
 def sim(startA, goalA, startB, goalB, cx, cy, cz):
     
-    # initial start
-
     # print("startA")
     # print(startA)
     # print("startB")
@@ -131,11 +169,15 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
     # store actual chosen trajectories
     trajAactual = np.zeros((dof, T))
     trajBactual = np.zeros((dof, T))
+    
+    # update initial error
+    errorA = []
+    errorB = []
 
-    for turn in range(nT):
+    for turn in tqdm(range(nT)):
 
-        print(f"nextStartA {nextStartA}")
-        print(f"nextStartB {nextStartB}")
+        # print(f"nextStartA {nextStartA}")
+        # print(f"nextStartB {nextStartB}")
 
         trajA, accA = generateTrajectories(nextStartA, vStartA, goalA, cx, cy, cz)
         trajB, accB = generateTrajectories(nextStartB, vStartB, goalB, cx, cy, cz)
@@ -146,6 +188,8 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         costs = getCostMats(trajA, accA, trajB, accB)
 
         sols = solveLCPs(costs)
+
+        #print(f"sols shape {sols.shape}")
         
         # choose action
         asol = np.argmax(sols[0,0])
@@ -156,6 +200,9 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         trajAactual[:, turn*L:(turn+1)*L] = trajA[asol, :, 0:L]
         trajBactual[:, turn*L:(turn+1)*L] = trajB[bsol, :, 0:L]
 
+        #print(f"trajAactual {trajAactual.shape}")
+        #print(f"trajBactual {trajAactual.shape}")
+
         # update next start position
         nextStartA = trajA[asol, :3, L] # assign next start to xyz
         nextStartB = trajB[bsol, :3, L]
@@ -164,161 +211,102 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         vStartA = trajA[asol, 4:7, L] # assign next velocity to xyz
         vStartB = trajB[bsol, 4:7, L]
 
-        print("actual traj")
-        print(f"A {trajAactual[:3, turn]}")
-        print(f"B {trajBactual[:3, turn]}")
+        #print(f"turn number {turn+1}/{nT}")
 
-        ax, ay, az = nextStartA
-        bx, by, bz = nextStartB
-        xga, yga, zga = goalA
-        xgb, ygb, zgb = goalB
-
-        print(f"A actual x, y, z {ax, ay, az}")
-        print(f"B actual x, y, z {bx, by, bz}")
-
-        # TODO plot error curves
-        print(f"turn number {turn+1}/{nT}")
-        print("Percent error from goal A")
-        print(f"x: {round((abs(ax-xga)/xga)*100, 2)}%")
-        print(f"y: {round((abs(ay-yga)/yga)*100, 2)}%")
-        print(f"z: {round((abs(az-zga)/zga)*100, 2)}%")
-
-        print("Percent error from goal B")
-        print(f"x: {round((abs(bx-xgb)/xgb)*100, 2)}%")
-        print(f"y: {round((abs(by-ygb)/ygb)*100, 2)}%")
-        print(f"z: {round((abs(bz-zgb)/zgb)*100, 2)}%")
-
-        print("--------------------")
+        # update error
+        errorA.append(getErrorAtTurn(nextStartA, goalA))
+        errorB.append(getErrorAtTurn(nextStartB, goalB))
+        
+    return (trajAactual, errorA), (trajBactual, errorB)
 
 
-        # fig = plt.figure()
-        # ax = plt.axes(projection='3d')
-        # ax.set_xlabel('x')
-        # ax.set_ylabel('y')
-        # ax.set_zlabel('z')
-        # #ax.plot(trajA[asol, 0, :], trajA[asol, 1, :], trajA[asol, 2, :], label="A")
-        # #ax.plot(trajB[bsol, 0, :], trajB[bsol, 1, :], trajB[bsol, 2, :], label="B")
+"""
+Callback for animating the simulated game, 
 
-        # ax.plot(trajAactual[0, :], trajAactual[1, :], trajAactual[2, :], label="A")
-        # ax.plot(trajBactual[0, :], trajBactual[1, :], trajBactual[2, :], label="B")
-        # ax.legend(loc="upper left")
-        # plt.show()
+t: the current iteration to update the figure from [0, T-1]
+trajAactual: the actual path taken by vehicle A
+trajBactual: the actual path taken by vehicle B
+"""
+def animate(t, fig, trajAactual, trajBactual):
 
-
-    # animation
-    fig = plt.figure() 
-    ax = Axes3D(fig)
-    #ax = plt.axes(projection='3d')
+    ax = plt.axes(projection='3d')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    ax.set_title("A and B trajectories")
+    ax.set_title(f"A and B trajectories with dt={dt}, nT={nT}, L={L}, H={H}, tol={tol}")
     l1 = plt.plot(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")[0]
     l2 = plt.plot(trajBactual[0, 0], trajBactual[1, 0], trajBactual[2, 0], label="B")[0]
+    #print(f"trajAactual shape {trajAactual.shape}")
 
-    print(f"trajAactual shape {trajAactual.shape}")
-    # arms to show yaw in animation - not showing up
-    #armA, = ax.plot([], [], [], color='blue',linewidth=5,antialiased=False)
-    #armB, = ax.plot([], [], [], color='red',linewidth=5,antialiased=False)
-    # pos_a = ax.scatter3D(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")
-    # pos_b = ax.scatter3D(trajBactual[0, 0], trajBactual[1, 0 ], trajBactual[2, 0], label="B")
+    l1.set_data(trajAactual[0, :t], trajAactual[1, :t])
+    l1.set_3d_properties(trajAactual[2, :t])
+    l2.set_data(trajBactual[0, :t], trajBactual[1, :t])
+    l2.set_3d_properties(trajBactual[2, :t])
+    ax.legend(loc="lower left")
 
-    # plt.show()
+"""
+save the animation as mp4 with title containing number of turns
+and timestamp
 
-    def animate(t, l1, l2):
-        print("trajA x, y, z")
-        print(trajAactual[0, t])
-        print(trajAactual[1, t])
-        print(trajAactual[2, t])
-
-        print("trajB x, y, z")
-        print(trajBactual[0, t])
-        print(trajBactual[1, t])
-        print(trajBactual[2, t])
-
-        l1.set_data(trajAactual[0, :t], trajAactual[1, :t])
-        l1.set_3d_properties(trajAactual[2, :t])
-
-        l2.set_data(trajBactual[0, :t], trajBactual[1, :t])
-        l2.set_3d_properties(trajBactual[2, :t])
-        return l1, l2
-
-        # pos_a._offsets3d = (trajAactual[0, t], trajAactual[1, t], trajAactual[2, t])
-        # pos_b._offsets3d = (trajBactual[0, t], trajBactual[1, t], trajBactual[2, t])
-        
-        # update arm positions - TODO this doesnt work
-        # pos_a.set_data(trajAactual[0, t], trajAactual[1, t])
-        # pos_a.set_3d_properties(trajAactual[2, t])
-        # pos_b.set_data(trajBactual[0, t], trajBactual[1, t])
-        # pos_b.set_3d_properties(trajBactual[2, t])
+ani: animation object representing simulated game
+"""
+def save(ani):
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    fname = f"results/avoid_{nT}_{timestr}.mp4"
+    ani.save(fname)
+    print(f"successfully saved {fname}")
 
 
-    ani = animation.FuncAnimation(fig,
-                                animate,
-                                save_count=T,
-                                fargs = (l1, l2),  # total number of calls to animate
-                                interval=dt * 500)  # interval = miliseconds between frames
-    ani.save("avoid.mp4")
+"""
+Plot the error for a player over all turns
 
+    err: a list of (%x, %y, %z) tuples for % error loss at each turn for A/B
 
+    return: plots for percent error at each turn of a player A/B
+"""
+def plotError(errA, errB):
 
+    fig, (ax1, ax2) = plt.subplots(2)
+    fig.suptitle('Percent error for A and B')
+    ax1.plot(range(1, nT+1), [x[0] for x in errA], label="x error A", color='r')
+    ax1.plot(range(1, nT+1), [x[1] for x in errA], label="y error", color='b')
+    ax1.plot(range(1, nT+1), [x[2] for x in errA], label="z error", color='y')
+    ax2.plot(range(1, nT+1), [x[0] for x in errB], label="x error B")
+    ax2.plot(range(1, nT+1), [x[1] for x in errB], label="y error")
+    ax2.plot(range(1, nT+1), [x[2] for x in errB], label="z error")
+    ax1.legend()
+    ax2.legend()
+    plt.xlabel("turn number")
+    plt.ylabel("percent error")
+    #plt.show()
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    fname = f"results/error_{nT}_{timestr}.png"
+    plt.savefig(fname)
+    print(f"successfully saved {fname}")
 
 """ Driver code """
 startA = [6, 6, 6] # blue
 goalA = [1, 1, 1]
 startB = [1, 1, 1] # orange
 goalB = [6, 6, 6]
-cx = [0, 0, -3, 3, 0] # TODO change these?
+
+# TODO change these?
+cx = [0, 0, -3, 3, 0] 
 cy = [3, -3, 3, -3, 0]
 cz = [-3, 3, 0, 0, 0]
-sim(startA, goalA, startB, goalB, cx, cy, cz)
 
-# generate trajectories
+# do the simulation
+(trajA, errA), (trajB, errB) = sim(startA, goalA, startB, goalB, cx, cy, cz)
+print(f"len errA {len(errA), len(errA[0])}")
 
-# print(trajA.shape, accA.shape)
-# print(trajB.shape, accB.shape)
+plotError(errA, errB)
+# animation based on real trajectories
+fig = plt.figure() 
+ani = animation.FuncAnimation(fig,
+                              animate,
+                              save_count=T,
+                              fargs = (fig, trajA, trajB),  # total number of calls to animate
+                              interval=dt * 500)  # interval = miliseconds between frames
+save(ani)
 
-# get costs
-# costs = getCostMats(trajA, trajB)
-# print(f"costs[0] shape {costs[0].shape}")
-# print(costs)
-
-# # solve the LCPs
-# sols = solveLCPs(costs)
-# print(f"solution shape {sols.shape}")
-# print(sols)
-# print(sols.shape)
-# print(type(sols))
-
-# asol = np.argmax(sols[0,0])
-# bsol = np.argmax(sols[0,1])
-# print(asol, bsol)
-
-# print("done")
-
-# fig = plt.figure()
-# ax = plt.axes(projection='3d')
-# ax.set_xlabel('x')
-# ax.set_ylabel('y')
-# ax.set_zlabel('z')
-# ax.plot(trajA[asol,0, :], trajA[asol,1,:], trajA[asol,2,:], label="A")
-# ax.plot(trajB[bsol,0, :], trajB[bsol,1,:], trajB[bsol,2,:], label="B")
-# ax.legend(loc="upper left")
-# plt.show()
-
-
-
-
-# mats = getCostMats(trajA, trajB)
-# sols = solveLCPs(mats)
-
-# Test RPS bimatrix example
-# A = np.array([[2, 3, 1], [1, 2, 3], [3, 1, 2]])
-# B = -copy.deepcopy(A)
-
-# gme = nash.Game(A, B)
-# x, y = gme.lemke_howson(initial_dropped_label=0)
-# print(x)
-# print(y)
-# assert np.linalg.norm(x - y) <= 1e-6
-# assert np.linalg.norm(x - 1 / 3.0 * np.array([1, 1, 1])) <= 1e-6
+print("done")
