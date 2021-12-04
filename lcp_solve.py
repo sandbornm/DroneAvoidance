@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
 
+from mpl_toolkits.mplot3d import Axes3D
+
 from generate_traj import generate_traj
 from lemke_howson import LCP_lemke_howson
 
@@ -171,8 +173,11 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         xga, yga, zga = goalA
         xgb, ygb, zgb = goalB
 
+        print(f"A actual x, y, z {ax, ay, az}")
+        print(f"B actual x, y, z {bx, by, bz}")
+
         # TODO plot error curves
-        print(f"turn number {turn}/{nT}")
+        print(f"turn number {turn+1}/{nT}")
         print("Percent error from goal A")
         print(f"x: {round((abs(ax-xga)/xga)*100, 2)}%")
         print(f"y: {round((abs(ay-yga)/yga)*100, 2)}%")
@@ -202,31 +207,57 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
 
     # animation
     fig = plt.figure() 
-    ax = plt.axes(projection='3d')
+    ax = Axes3D(fig)
+    #ax = plt.axes(projection='3d')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    # arms to show yaw in animation - not showing up
-    armA, = ax.plot([],[],[],color='blue',linewidth=5,antialiased=False)
-    armB, = ax.plot([],[],[],color='red',linewidth=5,antialiased=False)
-    pos_a = ax.scatter(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")
-    pos_b = ax.scatter(trajBactual[0, 0], trajBactual[1, 0 ], trajBactual[2, 0], label="B")
+    ax.set_title("A and B trajectories")
+    l1 = plt.plot(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")[0]
+    l2 = plt.plot(trajBactual[0, 0], trajBactual[1, 0], trajBactual[2, 0], label="B")[0]
 
-    def animate(t):
-        pos_a.set_offsets([trajAactual[0, t], trajAactual[1, t], trajAactual[2, t]])
-        pos_b.set_offsets([trajBactual[0, t], trajBactual[1, t], trajBactual[2, t]])
+    print(f"trajAactual shape {trajAactual.shape}")
+    # arms to show yaw in animation - not showing up
+    #armA, = ax.plot([], [], [], color='blue',linewidth=5,antialiased=False)
+    #armB, = ax.plot([], [], [], color='red',linewidth=5,antialiased=False)
+    # pos_a = ax.scatter3D(trajAactual[0, 0], trajAactual[1, 0], trajAactual[2, 0], label="A")
+    # pos_b = ax.scatter3D(trajBactual[0, 0], trajBactual[1, 0 ], trajBactual[2, 0], label="B")
+
+    # plt.show()
+
+    def animate(t, l1, l2):
+        print("trajA x, y, z")
+        print(trajAactual[0, t])
+        print(trajAactual[1, t])
+        print(trajAactual[2, t])
+
+        print("trajB x, y, z")
+        print(trajBactual[0, t])
+        print(trajBactual[1, t])
+        print(trajBactual[2, t])
+
+        l1.set_data(trajAactual[0, :t], trajAactual[1, :t])
+        l1.set_3d_properties(trajAactual[2, :t])
+
+        l2.set_data(trajBactual[0, :t], trajBactual[1, :t])
+        l2.set_3d_properties(trajBactual[2, :t])
+        return l1, l2
+
+        # pos_a._offsets3d = (trajAactual[0, t], trajAactual[1, t], trajAactual[2, t])
+        # pos_b._offsets3d = (trajBactual[0, t], trajBactual[1, t], trajBactual[2, t])
         
         # update arm positions - TODO this doesnt work
-        armA.set_data(trajAactual[0, t], trajAactual[1, t])
-        armA.set_3d_properties(trajAactual[2, t])
-        armB.set_data(trajBactual[0, t], trajBactual[1, t])
-        armB.set_3d_properties(trajBactual[2, t])
+        # pos_a.set_data(trajAactual[0, t], trajAactual[1, t])
+        # pos_a.set_3d_properties(trajAactual[2, t])
+        # pos_b.set_data(trajBactual[0, t], trajBactual[1, t])
+        # pos_b.set_3d_properties(trajBactual[2, t])
 
 
     ani = animation.FuncAnimation(fig,
                                 animate,
-                                save_count=T,  # total number of calls to animate
-                                interval=dt * 1000)  # interval = miliseconds between frames
+                                save_count=T,
+                                fargs = (l1, l2),  # total number of calls to animate
+                                interval=dt * 500)  # interval = miliseconds between frames
     ani.save("avoid.mp4")
 
 
