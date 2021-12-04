@@ -125,7 +125,7 @@ def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
 # sol_lef, _ = generate_traj(x_start, v_start, goal, N, dt, -3, 3, 0)
 #
 # # Right
-# sol_rig, _ = generate_traj(x_start, v_start goal, N, dt, 3, -3, 0)
+# sol_rig, _ = generate_traj(x_start, v_start, goal, N, dt, 3, -3, 0)
 #
 # # Middle
 # sol_mid ,_ = generate_traj(x_start, v_start, goal, N, dt, 0, 0, 0)
@@ -141,4 +141,5 @@ def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
 # ax.plot(sol_rig[0, :], sol_rig[1, :], sol_rig[2, :], label="right")
 # ax.plot(sol_mid[0, :], sol_mid[1, :], sol_mid[2, :], label="bottom")
 # ax.legend(loc="upper left")
+# fig.savefig('trajectories.jpeg')
 # plt.show()
