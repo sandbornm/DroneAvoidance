@@ -14,13 +14,13 @@ import time
 
 
 """ hyperparams - can be adjusted for a parameter study"""
-T = 100 # game length (25, 50, 100, 200)
+T = 50 # game length (25, 50, 100, 200)
 L = 5 # turn length
 H = 10 # predictive horizon
 nT = int(T/L) # number of turns in game (5, 10, 20, 40)
 N = 5 # number of candidate trajectories
 dof = 8 # dof in dynamics model
-dt = .1 # timestep size
+dt = .5 # timestep size .1, .2, .5
 tol = 1 # tolerance for checking if trajectories intersect
 
 
@@ -284,13 +284,33 @@ def plotError(errA, errB):
     plt.savefig(fname)
     print(f"successfully saved {fname}")
 
-""" Driver code """
-startA = [6, 6, 6] # blue
-goalA = [1, 1, 1]
-startB = [1, 1, 1] # orange
-goalB = [6, 6, 6]
 
-# TODO change these?
+
+"""
+    Plot the static result of the trajectories
+"""
+def plotStatic(trajAactual, trajBactual):
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    ax.set_title(f"A and B final trajectories with dt={dt}, nT={nT}, L={L}, H={H}, tol={tol}")
+    #ax.plot(trajA[asol, 0, :], trajA[asol, 1, :], trajA[asol, 2, :], label="A")
+    #ax.plot(trajB[bsol, 0, :], trajB[bsol, 1, :], trajB[bsol, 2, :], label="B")
+
+    ax.plot(trajAactual[0, :], trajAactual[1, :], trajAactual[2, :], label="A")
+    ax.plot(trajBactual[0, :], trajBactual[1, :], trajBactual[2, :], label="B")
+    ax.legend(loc="upper left")
+    plt.show()
+
+""" Driver code """
+startA = [4, 0, -7] # blue
+goalA = [-8, 8, -13]
+startB = [-8, 8, -13] # orange
+goalB = [4, 0, -7]
+
+# TODO change these? 1,3,5
 cx = [0, 0, -3, 3, 0] 
 cy = [3, -3, 3, -3, 0]
 cz = [-3, 3, 0, 0, 0]
@@ -299,14 +319,16 @@ cz = [-3, 3, 0, 0, 0]
 (trajA, errA), (trajB, errB) = sim(startA, goalA, startB, goalB, cx, cy, cz)
 print(f"len errA {len(errA), len(errA[0])}")
 
-plotError(errA, errB)
+#plotError(errA, errB)
 # animation based on real trajectories
-fig = plt.figure() 
-ani = animation.FuncAnimation(fig,
-                              animate,
-                              save_count=T,
-                              fargs = (fig, trajA, trajB),  # total number of calls to animate
-                              interval=dt * 500)  # interval = miliseconds between frames
-save(ani)
+# fig = plt.figure() 
+# ani = animation.FuncAnimation(fig,
+#                               animate,
+#                               save_count=T,
+#                               fargs = (fig, trajA, trajB),  # total number of calls to animate
+#                               interval=dt * 500)  # interval = miliseconds between frames
+# save(ani)
+
+plotStatic(trajA, trajB)
 
 print("done")
