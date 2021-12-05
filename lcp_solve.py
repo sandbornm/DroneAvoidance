@@ -20,8 +20,17 @@ H = 10 # predictive horizon
 nT = int(T/L) # number of turns in game (5, 10, 20, 40)
 N = 5 # number of candidate trajectories
 dof = 8 # dof in dynamics model
-dt = .5 # timestep size .1, .2, .5
+dt = .5 # timestep size
 tol = 1 # tolerance for checking if trajectories intersect
+startA = [4, 0, -7] # blue
+goalA = [-8, 8, -13]
+startB = [-8, 8, -13] # orange
+goalB = [4, 0, -7]
+
+
+cx = [0, 0, -3, 3, 0]
+cy = [3, -3, 3, -3, 0]
+cz = [-3, 3, 0, 0, 0]
 
 
 
@@ -112,10 +121,10 @@ def solveLCPs(mats):
 xcur:
 goal: x,y,z goal for player
 """
-def generateTrajectories(start, vstart, goal, cx, cy, cz):
+def generateTrajectories(start, vstart, phi_start, vphi_start, goal, cx, cy, cz):
     traj, acc = [], []
     for i in range(N):
-        state, control = generate_traj(start, vstart, goal, H, dt, cx[i], cy[i], cz[i])
+        state, control = generate_traj(start, vstart, phi_start, vphi_start, goal, H, dt, cx[i], cy[i], cz[i])
         traj.append(state)
         acc.append(control)
     return np.array(traj), np.array(acc)
@@ -165,6 +174,10 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
     nextStartB = startB
     vStartA = [0,0,0]
     vStartB = [0,0,0]
+    phi_a = 0
+    phi_b = 0
+    vphi_a = 0
+    vphi_b = 0
 
     # store actual chosen trajectories
     trajAactual = np.zeros((dof, T))
@@ -179,8 +192,8 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         # print(f"nextStartA {nextStartA}")
         # print(f"nextStartB {nextStartB}")
 
-        trajA, accA = generateTrajectories(nextStartA, vStartA, goalA, cx, cy, cz)
-        trajB, accB = generateTrajectories(nextStartB, vStartB, goalB, cx, cy, cz)
+        trajA, accA = generateTrajectories(nextStartA, vStartA, phi_a, vphi_a, goalA, cx, cy, cz)
+        trajB, accB = generateTrajectories(nextStartB, vStartB, phi_b, vphi_b, goalB, cx, cy, cz)
 
         # print("traj and acc shapes")
         # print(f"trajA {trajA.shape} accA {accA.shape}")
@@ -210,6 +223,13 @@ def sim(startA, goalA, startB, goalB, cx, cy, cz):
         # update next start velocity
         vStartA = trajA[asol, 4:7, L] # assign next velocity to xyz
         vStartB = trajB[bsol, 4:7, L]
+
+        phi_a = trajA[asol, 3, L]
+        phi_b = trajB[bsol, 3, L]
+
+        vphi_a = trajA[asol, 7, L]
+        vphi_b = trajB[bsol, 7, L]
+
 
         #print(f"turn number {turn+1}/{nT}")
 
@@ -305,23 +325,23 @@ def plotStatic(trajAactual, trajBactual):
     plt.show()
 
 """ Driver code """
-startA = [4, 0, -7] # blue
-goalA = [-8, 8, -13]
-startB = [-8, 8, -13] # orange
-goalB = [4, 0, -7]
-
-# TODO change these? 1,3,5
-cx = [0, 0, -3, 3, 0] 
-cy = [3, -3, 3, -3, 0]
-cz = [-3, 3, 0, 0, 0]
-
-# do the simulation
-(trajA, errA), (trajB, errB) = sim(startA, goalA, startB, goalB, cx, cy, cz)
-print(f"len errA {len(errA), len(errA[0])}")
-
-#plotError(errA, errB)
-# animation based on real trajectories
-# fig = plt.figure() 
+# startA = [6, 6, 6] # blue
+# goalA = [1, 1, 1]
+# startB = [1, 1, 1] # orange
+# goalB = [6, 6, 6]
+#
+#
+# cx = [0, 0, -3, 3, 0]
+# cy = [3, -3, 3, -3, 0]
+# cz = [-3, 3, 0, 0, 0]
+#
+# # do the simulation
+# (trajA, errA), (trajB, errB) = sim(startA, goalA, startB, goalB, cx, cy, cz)
+# print(f"len errA {len(errA), len(errA[0])}")
+#
+# plotError(errA, errB)
+# # animation based on real trajectories
+# fig = plt.figure()
 # ani = animation.FuncAnimation(fig,
 #                               animate,
 #                               save_count=T,
@@ -329,6 +349,4 @@ print(f"len errA {len(errA), len(errA[0])}")
 #                               interval=dt * 500)  # interval = miliseconds between frames
 # save(ani)
 
-plotStatic(trajA, trajB)
-
-print("done")
+# plotStatic(trajA, trajB)

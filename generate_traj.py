@@ -34,7 +34,7 @@ uphi
 
 Examples of use cases are shown below
 '''
-def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
+def generate_traj(x_start, v_start, phi_start, vphi_start, goal, N, dt, cx, cy, cz):
     k_x = 1
     k_y = 1
     k_z = 1
@@ -65,6 +65,8 @@ def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
     X = opti.variable(nx, N + 1)  # state trajectory
     pos = X[0:3, :]
     speed = X[4:7, :]
+    phi = X[3, :]
+    vphi = X[7, :]
     midpoint = (np.array(x_start) + np.array(goal)) / 2
     dist = np.linalg.norm((np.array(x_start), np.array(goal)))
     slopez = (goal[2] - x_start[2]) / dist
@@ -95,6 +97,9 @@ def generate_traj(x_start, v_start, goal, N, dt, cx, cy, cz):
     # ---- boundary conditions --------
     opti.subject_to(pos[:, 0] == x_start)  # start at position 0 ...
     opti.subject_to(speed[:, 0] == v_start)  # ... from stand-still
+    opti.subject_to(phi[0] == phi_start)
+    opti.subject_to(vphi[0] == vphi_start)
+
 
     # ---- misc. constraints  ----------
     opti.subject_to(T >= 0)  # distance must be positive
